@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VR Zombie Shooter</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
+  <script>
+    let score = 0;
+    let health = 100;
+
+    function updateUI() {
+      document.querySelector('#score').setAttribute('value', "SCORE: " + score);
+      document.querySelector('#health').setAttribute('value', "HEALTH: " + health);
+    }
+
+    // 🧟 SPAWN ZOMBIE
+    function spawnZombie() {
+      const scene = document.querySelector('a-scene');
+
+      let zombie = document.createElement('a-box');
+      zombie.setAttribute('color', 'green');
+      zombie.setAttribute('depth', '0.5');
+      zombie.setAttribute('height', '1.5');
+      zombie.setAttribute('width', '0.7');
+      zombie.setAttribute('class', 'zombie clickable');
+
+      let x = (Math.random() - 0.5) * 20;
+      let z = -20;
+
+      zombie.setAttribute('position', `${x} 0 ${z}`);
+      zombie.setAttribute('zombie-move', '');
+
+      scene.appendChild(zombie);
+    }
+
+    // 🚶 ZOMBIE MOVEMENT
+    AFRAME.registerComponent('zombie-move', {
+      tick: function () {
+        let pos = this.el.object3D.position;
+
+        pos.z += 0.03;
+
+        // If zombie reaches player
+        if (pos.z > -1) {
+          this.el.parentNode.removeChild(this.el);
+          health -= 10;
+          updateUI();
+
+          if (health <= 0) {
+            alert("GAME OVER!");
+            location.reload();
+          }
+        }
+      }
+    });
+
+    // 🔫 SHOOTING SYSTEM
+    function shoot(raycaster) {
+      let hit = raycaster.intersectedEls[0];
+
+      if (hit && hit.classList.contains('zombie')) {
+        let pos = hit.getAttribute('position');
+
+        createExplosion(pos);
+
+        hit.parentNode.removeChild(hit);
+        score += 10;
+        updateUI();
+      }
+    }
+
+    // 💥 SIMPLE EXPLOSION
+    function createExplosion(pos) {
+      const scene = document.querySelector('a-scene');
+
+      for (let i = 0; i < 6; i++) {
+        let p = document.createElement('a-sphere');
+        p.setAttribute('radius', '0.1');
+        p.setAttribute('color', 'red');
+        p.setAttribute('position', pos);
+
+        let dx = (Math.random() - 0.5) * 2;
+        let dy = (Math.random() - 0.5) * 2;
+        let dz = (Math.random() - 0.5) * 2;
+
+        p.setAttribute('animation', `property: position; to: ${pos.x+dx} ${pos.y+dy} ${pos.z+dz}; dur: 500`);
+
+        scene.appendChild(p);
+        setTimeout(() => p.remove(), 500);
+      }
+    }
+
+    // 🖱️ MOUSE CONTROL
+    AFRAME.registerComponent('mouse-shoot', {
+      init: function () {
+        let cursor = document.querySelector('#cursor');
+
+        window.addEventListener('mousedown', (e) => {
+          if (e.button === 0) {
+            shoot(cursor.components.raycaster);
+          }
+        });
+      }
+    });
+
+    // ⏱️ SPAWN LOOP
+    setInterval(() => {
+      spawnZombie();
+    }, 2000);
+  </script>
+</head>
+
+<body>
+<a-scene mouse-shoot>
+
+  <a-sky color="#111"></a-sky>
+
+  <!-- Ground -->
+  <a-plane rotation="-90 0 0" width="50" height="50" color="#222"></a-plane>
+
+  <!-- Camera -->
+  <a-entity position="0 1.6 0">
+    <a-camera>
+      <a-entity id="cursor"
+        cursor="rayOrigin: entity"
+        raycaster="objects: .clickable"
+        position="0 0 -1"
+        geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+        material="color: red">
+      </a-entity>
+
+      <!-- UI -->
+      <a-text id="score" value="SCORE: 0" position="-0.8 0.5 -1" color="white"></a-text>
+      <a-text id="health" value="HEALTH: 100" position="0.3 0.5 -1" color="red"></a-text>
+    </a-camera>
+  </a-entity>
+
+</a-scene>
+</body>
+</html>
